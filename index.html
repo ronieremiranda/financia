@@ -579,13 +579,13 @@ async function bootstrap(user){
   if(!DB.catDesp.length) await seedCategories(uid);
   if(!Object.keys(DB.limites).length) await seedLimites(uid);
 
-  loading(true,'Verificando recorrências…');
-  await processarRecorrencias();
   loading(false);
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app-screen').style.display='block';
   renderDashboard();
   updateSaldo();
+  // Processa recorrências em segundo plano sem travar o login
+  processarRecorrencias().catch(e => console.warn('Recorrências:', e));
 }
 
 async function seedCategories(uid){
