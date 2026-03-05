@@ -270,6 +270,8 @@ textarea{resize:vertical;min-height:68px}
     <div class="nav-item" onclick="go('patrimonio')"><span class="nav-icon">◈</span> Patrimônio</div>
     <div class="nav-section">Config</div>
     <div class="nav-item" onclick="go('categorias')"><span class="nav-icon">⊞</span> Categorias</div>
+    <div class="nav-section">Automação</div>
+    <div class="nav-item" onclick="go('recorrencias')"><span class="nav-icon">↺</span> Recorrências</div>
   </nav>
   <div class="sb-bottom">
     <div class="sb-bal-label">Saldo do mês</div>
@@ -393,6 +395,21 @@ textarea{resize:vertical;min-height:68px}
   </div>
 </div>
 
+<!-- RECORRÊNCIAS -->
+<div class="page" id="p-recorrencias">
+  <div class="sec-head">
+    <div><div class="sec-title">Transações Recorrentes</div><div class="sec-sub">Lançadas automaticamente a cada acesso</div></div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('recorrencia')">+ Nova Recorrência</button>
+  </div>
+  <div style="background:rgba(79,156,249,.08);border:1px solid rgba(79,156,249,.18);border-radius:var(--r-sm);padding:12px 16px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.6">
+    <strong style="color:var(--accent)">Como funciona:</strong> cadastre uma despesa ou receita fixa com seu intervalo (mensal, bimestral, etc.). O Financia detecta automaticamente os meses em aberto e lança as transações ao entrar no app — sem precisar digitar todo mês.
+  </div>
+  <div class="tbl-wrap">
+    <table><thead><tr><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Intervalo</th><th>Início</th><th>Fim</th><th class="tr">Valor</th><th>Último lançamento</th><th>Status</th><th></th></tr></thead>
+    <tbody id="t-recorrencias"></tbody></table>
+  </div>
+</div>
+
 </div><!-- /content -->
 </div><!-- /shell -->
 </div><!-- /app-screen -->
@@ -448,7 +465,7 @@ const DEFAULT_LIMITES = {
 // STATE
 // ══════════════════════════════════════════════════
 let USER = null;
-let DB = { catDesp:[], catRec:[], despesas:[], receitas:[], parcelamentos:[], investimentos:[], metas:[], limites:{} };
+let DB = { catDesp:[], catRec:[], despesas:[], receitas:[], parcelamentos:[], investimentos:[], metas:[], limites:{}, recorrencias:[] };
 let REF_MES = 3, REF_ANO = 2026;
 
 // ══════════════════════════════════════════════════
@@ -534,7 +551,7 @@ async function bootstrap(user){
 
   const uid=user.id;
   // Parallel fetch all tables
-  const [cd,cr,desp,rec,parc,inv,met,lim] = await Promise.all([
+  const [cd,cr,desp,rec,parc,inv,met,lim,recorr] = await Promise.all([
     SB.from('categorias_despesa').select('*').eq('user_id',uid).order('created_at'),
     SB.from('categorias_receita').select('*').eq('user_id',uid).order('created_at'),
     SB.from('despesas').select('*').eq('user_id',uid).order('data',{ascending:false}),
@@ -543,6 +560,7 @@ async function bootstrap(user){
     SB.from('investimentos').select('*').eq('user_id',uid).order('created_at'),
     SB.from('metas').select('*').eq('user_id',uid).order('created_at'),
     SB.from('limites').select('*').eq('user_id',uid),
+    SB.from('recorrencias').select('*').eq('user_id',uid).order('created_at'),
   ]);
 
   DB.catDesp = cd.data||[];
@@ -552,6 +570,7 @@ async function bootstrap(user){
   DB.parcelamentos=parc.data||[];
   DB.investimentos=inv.data||[];
   DB.metas=met.data||[];
+  DB.recorrencias=recorr.data||[];
   // Build limites map
   DB.limites={};
   (lim.data||[]).forEach(l=>DB.limites[l.categoria]=Number(l.valor));
@@ -560,6 +579,8 @@ async function bootstrap(user){
   if(!DB.catDesp.length) await seedCategories(uid);
   if(!Object.keys(DB.limites).length) await seedLimites(uid);
 
+  loading(true,'Verificando recorrências…');
+  await processarRecorrencias();
   loading(false);
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app-screen').style.display='block';
@@ -596,14 +617,14 @@ SB.auth.onAuthStateChange(async(event,session)=>{
 // ══════════════════════════════════════════════════
 // NAV
 // ══════════════════════════════════════════════════
-const TITLES={dashboard:'Dashboard',fluxo:'Fluxo de Caixa',receitas:'Receitas',despesas:'Despesas',parcelamentos:'Parcelamentos',metas:'Metas',investimentos:'Investimentos',patrimonio:'Patrimônio Líquido',categorias:'Categorias'};
+const TITLES={dashboard:'Dashboard',fluxo:'Fluxo de Caixa',receitas:'Receitas',despesas:'Despesas',parcelamentos:'Parcelamentos',metas:'Metas',investimentos:'Investimentos',patrimonio:'Patrimônio Líquido',categorias:'Categorias',recorrencias:'Recorrências'};
 function go(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('p-'+id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>{ if(n.getAttribute('onclick')===`go('${id}')`) n.classList.add('active'); });
   document.getElementById('page-title').textContent=TITLES[id]||id;
-  ({dashboard:renderDashboard,fluxo:renderFluxo,receitas:renderReceitas,despesas:renderDespesas,parcelamentos:renderParc,metas:renderMetas,investimentos:renderInvestimentos,patrimonio:renderPatrimonio,categorias:renderCategorias})[id]?.();
+  ({dashboard:renderDashboard,fluxo:renderFluxo,receitas:renderReceitas,despesas:renderDespesas,parcelamentos:renderParc,metas:renderMetas,investimentos:renderInvestimentos,patrimonio:renderPatrimonio,categorias:renderCategorias,recorrencias:renderRecorrencias})[id]?.();
 }
 function updateSaldo(){
   const s=totalRec()-totalDesp();
@@ -789,7 +810,7 @@ async function delRow(table, id){
   const {error}=await SB.from(table).delete().eq('id',id);
   if(error){loading(false);toast('Erro: '+error.message,'var(--red)');return;}
   // Update local state
-  const map={despesas:'despesas',receitas:'receitas',parcelamentos:'parcelamentos',investimentos:'investimentos',metas:'metas',categorias_despesa:'catDesp',categorias_receita:'catRec'};
+  const map={despesas:'despesas',receitas:'receitas',parcelamentos:'parcelamentos',investimentos:'investimentos',metas:'metas',categorias_despesa:'catDesp',categorias_receita:'catRec',recorrencias:'recorrencias'};
   const key=map[table];
   if(key) DB[key]=DB[key].filter(r=>r.id!==id);
   loading(false);
@@ -799,6 +820,83 @@ async function delRow(table, id){
   if(active){const pid=active.id.replace('p-','');({dashboard:renderDashboard,fluxo:renderFluxo,receitas:renderReceitas,despesas:renderDespesas,parcelamentos:renderParc,metas:renderMetas,investimentos:renderInvestimentos,patrimonio:renderPatrimonio,categorias:renderCategorias})[pid]?.();}
   updateSaldo();
   if(table==='parcelamentos'){document.getElementById('filt-parc').innerHTML='<option value="">Todos os meses</option>';}
+}
+
+// ══════════════════════════════════════════════════
+// RECORRÊNCIAS
+// ══════════════════════════════════════════════════
+async function processarRecorrencias(){
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  let houveNovos=false;
+  for(const rec of DB.recorrencias){
+    if(!rec.ativo) continue;
+    const inicio=new Date(rec.data_inicio+'T00:00:00');
+    const fim=rec.data_fim?new Date(rec.data_fim+'T00:00:00'):null;
+    let dataRef=new Date(inicio);
+    if(rec.ultimo_lancamento){
+      dataRef=new Date(rec.ultimo_lancamento+'T00:00:00');
+      dataRef.setMonth(dataRef.getMonth()+rec.intervalo_meses);
+    }
+    const novos=[]; let ultimaData=rec.ultimo_lancamento;
+    while(dataRef<=hoje){
+      if(fim&&dataRef>fim) break;
+      novos.push(dataRef.toISOString().split('T')[0]);
+      ultimaData=dataRef.toISOString().split('T')[0];
+      const prox=new Date(dataRef); prox.setMonth(prox.getMonth()+rec.intervalo_meses); dataRef=prox;
+    }
+    if(!novos.length) continue;
+    const tabela=rec.tipo==='despesa'?'despesas':'receitas';
+    const rows=novos.map(data=>rec.tipo==='despesa'
+      ?{user_id:USER.id,data,descricao:rec.descricao,valor:rec.valor,categoria:rec.categoria,forma_pagamento:rec.forma||'Débito Automático',tipo:'Recorrente',nota:(rec.nota?rec.nota+' ':'')+'[Recorrente]'}
+      :{user_id:USER.id,data,descricao:rec.descricao,valor:rec.valor,categoria:rec.categoria,forma_recebimento:rec.forma||'Pix / TED',tipo:'Outros',nota:(rec.nota?rec.nota+' ':'')+'[Recorrente]'}
+    );
+    const {data:criados,error}=await SB.from(tabela).insert(rows).select();
+    if(!error&&criados){
+      if(rec.tipo==='despesa') DB.despesas.unshift(...[...criados].reverse());
+      else DB.receitas.unshift(...[...criados].reverse());
+      await SB.from('recorrencias').update({ultimo_lancamento:ultimaData}).eq('id',rec.id);
+      rec.ultimo_lancamento=ultimaData;
+      houveNovos=true;
+    }
+  }
+  if(houveNovos){ updateSaldo(); const active=document.querySelector('.page.active'); if(active){const pid=active.id.replace('p-','');({dashboard:renderDashboard,receitas:renderReceitas,despesas:renderDespesas})[pid]?.();} }
+}
+
+function renderRecorrencias(){
+  const INTV={1:'Mensal',2:'Bimestral',3:'Trimestral',6:'Semestral',12:'Anual'};
+  document.getElementById('t-recorrencias').innerHTML=DB.recorrencias.map(r=>{
+    const cor=r.tipo==='despesa'?'var(--red)':'var(--green)';
+    const ic=r.tipo==='despesa'?'↓':'↑';
+    const catObj=r.tipo==='despesa'?catDespObj(r.categoria):catRecObj(r.categoria);
+    const intLbl=INTV[r.intervalo_meses]||`A cada ${r.intervalo_meses} meses`;
+    const status=r.ativo?'<span class="badge b-green">Ativo</span>':'<span class="badge b-gray">Pausado</span>';
+    return `<tr>
+      <td><span style="color:${cor};font-weight:700">${ic} ${r.tipo==='despesa'?'Despesa':'Receita'}</span></td>
+      <td style="font-weight:500">${r.descricao}</td>
+      <td><span style="color:${catObj.cor}">${catObj.emoji}</span> ${r.categoria}</td>
+      <td><span class="badge b-blue">${intLbl}</span></td>
+      <td class="mono" style="font-size:11px;color:var(--text3)">${fmtD(r.data_inicio)}</td>
+      <td class="mono" style="font-size:11px;color:var(--text3)">${r.data_fim?fmtD(r.data_fim):'Sem prazo'}</td>
+      <td class="mono tr" style="color:${cor};font-weight:600">${BRL(r.valor)}</td>
+      <td class="mono" style="font-size:11px;color:var(--text3)">${r.ultimo_lancamento?fmtD(r.ultimo_lancamento):'—'}</td>
+      <td>${status}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-ghost btn-sm" onclick="toggleRecorrencia('${r.id}',${!r.ativo})" title="${r.ativo?'Pausar':'Ativar'}">${r.ativo?'⏸':'▶'}</button>
+        <button class="btn btn-danger btn-sm" onclick="delRow('recorrencias','${r.id}')">✕</button>
+      </td></tr>`;
+  }).join('')||`<tr><td colspan="10"><div class="empty"><div class="empty-icon">↺</div><div class="empty-msg">Nenhuma recorrência cadastrada</div><div class="empty-sub">Clique em "+ Nova Recorrência" para começar</div></div></td></tr>`;
+}
+
+async function toggleRecorrencia(id,ativo){
+  const {error}=await SB.from('recorrencias').update({ativo}).eq('id',id);
+  if(!error){ const r=DB.recorrencias.find(r=>r.id===id); if(r) r.ativo=ativo; renderRecorrencias(); toast(ativo?'Recorrência ativada':'Recorrência pausada','var(--accent)'); }
+}
+
+function upRecCats(){
+  const tipo=document.getElementById('f-tipo-rec2')?.value;
+  const sel=document.getElementById('f-cat-rec3');
+  if(!tipo||!sel) return;
+  sel.innerHTML=(tipo==='despesa'?DB.catDesp:DB.catRec).map(c=>`<option value="${c.nome}">${c.emoji} ${c.nome}</option>`).join('');
 }
 
 // ══════════════════════════════════════════════════
@@ -848,6 +946,19 @@ function buildForm(type){
     <div class="fg-row"><div class="fg"><label>Tipo</label><select id="f-tipo-inv"><option>Ações</option><option>Renda Fixa</option><option>Tesouro Direto</option><option>FIIs</option><option>Cripto</option><option>Poupança</option><option>Outros</option></select></div><div class="fg"><label>Instituição</label><input type="text" id="f-inst" placeholder="XP, Nubank, Binance…"></div></div>
     <div class="fg-row"><div class="fg"><label>Valor Investido (R$)</label><input type="number" id="f-inv" step="0.01" min="0"></div><div class="fg"><label>Valor Atual (R$)</label><input type="number" id="f-atual" step="0.01" min="0"></div></div>
     <div class="fg"><label>Anotação</label><textarea id="f-nota"></textarea></div>`;
+
+  if(type==='recorrencia'){
+    const catDespOpts2=DB.catDesp.map(c=>`<option value="${c.nome}">${c.emoji} ${c.nome}</option>`).join('');
+    return `
+    <div class="fg-row"><div class="fg"><label>Tipo</label><select id="f-tipo-rec2" onchange="upRecCats()"><option value="despesa">Despesa</option><option value="receita">Receita</option></select></div><div class="fg"><label>Valor (R$)</label><input type="number" id="f-valor" step="0.01" min="0" placeholder="0,00"></div></div>
+    <div class="fg"><label>Descrição</label><input type="text" id="f-desc" placeholder="Ex: Aluguel, Netflix, Salário fixo…"></div>
+    <div class="fg-row"><div class="fg"><label>Categoria</label><select id="f-cat-rec3">${catDespOpts2}</select></div><div class="fg"><label>Forma</label><select id="f-forma-rec3">${formaOpts}</select></div></div>
+    <div class="fg-row">
+      <div class="fg"><label>Intervalo de recorrência</label><select id="f-intervalo"><option value="1">Mensal (todo mês)</option><option value="2">Bimestral (a cada 2 meses)</option><option value="3">Trimestral (a cada 3 meses)</option><option value="6">Semestral (a cada 6 meses)</option><option value="12">Anual (uma vez por ano)</option></select></div>
+      <div class="fg"><label>Data de início</label><input type="date" id="f-inicio" value="${today}"></div>
+    </div>
+    <div class="fg"><label>Data de término (opcional — deixe vazio para sem prazo)</label><input type="date" id="f-fim"></div>
+    <div class="fg"><label>Anotação</label><textarea id="f-nota" placeholder="Observações…"></textarea></div>`;}
 
   if(type==='cat-desp'||type==='cat-rec') return `
     <div class="fg-row"><div class="fg"><label>Emoji</label><input type="text" id="f-emoji" maxlength="2" placeholder="🏦" style="font-size:22px;text-align:center"></div><div class="fg"><label>Cor</label><input type="color" id="f-cor" value="#4f9cf9" style="height:42px;padding:2px 4px;cursor:pointer"></div></div>
@@ -939,6 +1050,24 @@ async function saveModal(){
       if(error) throw error;
       DB.investimentos.push(row);
       toast('✅ Ativo adicionado!','var(--purple)');
+    }
+    else if(type==='recorrencia'){
+      const tipo2=document.getElementById('f-tipo-rec2').value;
+      const valor=parseFloat(document.getElementById('f-valor').value);
+      const descricao=document.getElementById('f-desc').value.trim();
+      if(!valor||!descricao){loading(false);alert('Preencha descrição e valor.');return;}
+      const categoria=document.getElementById('f-cat-rec3').value;
+      const forma=document.getElementById('f-forma-rec3').value;
+      const intervalo_meses=parseInt(document.getElementById('f-intervalo').value);
+      const data_inicio=document.getElementById('f-inicio').value;
+      const data_fim=document.getElementById('f-fim').value||null;
+      const nota=document.getElementById('f-nota').value;
+      if(!data_inicio){loading(false);alert('Informe a data de início.');return;}
+      const {data:row,error}=await SB.from('recorrencias').insert({user_id:uid,tipo:tipo2,descricao,valor,categoria,forma,intervalo_meses,data_inicio,data_fim,nota,ativo:true,ultimo_lancamento:null}).select().single();
+      if(error) throw error;
+      DB.recorrencias.push(row);
+      await processarRecorrencias();
+      toast('Recorrência criada e lançamentos gerados!','var(--teal)');
     }
     else if(type==='cat-desp'||type==='cat-rec'){
       const emoji=document.getElementById('f-emoji').value.trim()||'❓';
