@@ -2,13 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#07080f">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Financia">
-<meta name="mobile-web-app-capable" content="yes">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Financia — Controle Financeiro Pessoal</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -205,62 +199,6 @@ textarea{resize:vertical;min-height:68px}
 .empty-sub{font-size:12px;margin-top:4px}
 
 ::-webkit-scrollbar{width:5px;height:5px}
-/* ── MOBILE NAV ── */
-.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:62px;background:var(--s1);border-top:1px solid var(--border);z-index:100;align-items:center;justify-content:space-around;padding-bottom:env(safe-area-inset-bottom,0px)}
-.mob-nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text3);font-size:10px;font-weight:600;cursor:pointer;padding:6px 4px;flex:1;transition:all .15s;text-align:center;position:relative}
-.mob-nav-item.active{color:var(--accent)}
-.mob-nav-item.active::before{content:'';position:absolute;top:-1px;left:25%;right:25%;height:2px;background:var(--accent);border-radius:0 0 3px 3px}
-.mob-icon{font-size:20px;line-height:1.2}
-
-/* ── MOB MORE DRAWER ── */
-.mob-more{position:fixed;bottom:62px;left:0;right:0;background:var(--s1);border-top:1px solid var(--border);z-index:99;transform:translateY(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);padding:8px 0;box-shadow:0 -8px 32px rgba(0,0,0,.4)}
-.mob-more.open{transform:translateY(0)}
-.mob-more-item{display:flex;align-items:center;gap:14px;padding:14px 24px;font-size:14px;font-weight:500;color:var(--text2);cursor:pointer}
-.mob-more-item:active{background:var(--s2)}
-.mob-more-icon{font-size:18px;width:24px;text-align:center}
-.mob-backdrop{display:none;position:fixed;inset:0;z-index:98;background:rgba(0,0,0,.5)}
-.mob-backdrop.open{display:block}
-
-/* ── FAB ── */
-.fab{display:none;position:fixed;bottom:76px;right:18px;width:54px;height:54px;border-radius:50%;background:var(--accent-g);border:none;color:#fff;font-size:28px;cursor:pointer;z-index:150;box-shadow:0 4px 20px rgba(79,156,249,.5);align-items:center;justify-content:center;transition:transform .25s;line-height:1}
-.fab.open{transform:rotate(45deg)}
-.fab-menu{position:fixed;bottom:142px;right:14px;display:flex;flex-direction:column;gap:10px;z-index:149;opacity:0;pointer-events:none;transform:translateY(12px);transition:all .22s}
-.fab-menu.open{opacity:1;pointer-events:all;transform:translateY(0)}
-.fab-item{display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--border2);border-radius:24px;padding:11px 18px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);box-shadow:0 4px 20px rgba(0,0,0,.5);white-space:nowrap}
-.fab-item:active{background:var(--s2)}
-.fab-dot{width:8px;height:8px;border-radius:50%}
-
-/* ── MOBILE BREAKPOINTS ── */
-@media(max-width:900px){
-  .mob-nav{display:flex}
-  .fab{display:flex}
-  .content{padding-bottom:72px}
-  .topbar-right{display:none}
-}
-@media(max-width:600px){
-  .kpi-row{display:flex;overflow-x:auto;gap:12px;padding-bottom:6px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;margin-bottom:18px}
-  .kpi-row::-webkit-scrollbar{display:none}
-  .kpi{min-width:155px;flex-shrink:0;scroll-snap-align:start}
-  .page{padding:16px 14px}
-  .topbar{padding:0 14px;height:50px}
-  .topbar-title{font-size:15px}
-  .sec-head{flex-direction:column;align-items:flex-start;gap:10px}
-  .sec-head > div:last-child{width:100%;display:flex;flex-wrap:wrap;gap:8px}
-  .sec-head .btn{flex:1;text-align:center}
-  .two-col{grid-template-columns:1fr}
-  .fg-row{grid-template-columns:1fr}
-  input,select,textarea{font-size:16px}
-  .overlay{align-items:flex-end}
-  .modal{width:100%;max-width:100%;border-radius:20px 20px 0 0;max-height:92vh}
-  .modal-hd{padding:16px 18px 12px}
-  .modal-bd{padding:16px 18px}
-  .modal-ft{padding:12px 18px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
-  th,td{padding:8px 10px;font-size:12px}
-  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .kpi-val{font-size:18px}
-  .alert-item{padding:10px 12px}
-}
-
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--s4);border-radius:3px}
 
@@ -474,29 +412,6 @@ textarea{resize:vertical;min-height:68px}
 
 </div><!-- /content -->
 </div><!-- /shell -->
-<!-- ══ MOBILE NAV ══ -->
-<div class="mob-backdrop" id="mob-backdrop" onclick="closeMobMore()"></div>
-<div class="mob-more" id="mob-more">
-  <div class="mob-more-item" onclick="go('fluxo');closeMobMore()"><span class="mob-more-icon">⇅</span>Fluxo de Caixa</div>
-  <div class="mob-more-item" onclick="go('parcelamentos');closeMobMore()"><span class="mob-more-icon">⋯</span>Parcelamentos</div>
-  <div class="mob-more-item" onclick="go('recorrencias');closeMobMore()"><span class="mob-more-icon">↺</span>Recorrências</div>
-  <div class="mob-more-item" onclick="go('investimentos');closeMobMore()"><span class="mob-more-icon">△</span>Investimentos</div>
-  <div class="mob-more-item" onclick="go('patrimonio');closeMobMore()"><span class="mob-more-icon">◈</span>Patrimônio</div>
-  <div class="mob-more-item" onclick="go('categorias');closeMobMore()"><span class="mob-more-icon">⊞</span>Categorias</div>
-</div>
-<nav class="mob-nav">
-  <div class="mob-nav-item active" id="mn-dashboard" onclick="go('dashboard')"><span class="mob-icon">⬡</span><span>Início</span></div>
-  <div class="mob-nav-item" id="mn-despesas" onclick="go('despesas')"><span class="mob-icon">↓</span><span>Despesas</span></div>
-  <div class="mob-nav-item" id="mn-receitas" onclick="go('receitas')"><span class="mob-icon">↑</span><span>Receitas</span></div>
-  <div class="mob-nav-item" id="mn-metas" onclick="go('metas')"><span class="mob-icon">◎</span><span>Metas</span></div>
-  <div class="mob-nav-item" id="mn-mais" onclick="toggleMobMore()"><span class="mob-icon">⋯</span><span>Mais</span></div>
-</nav>
-<button class="fab" id="fab" onclick="toggleFab()" aria-label="Nova transação">+</button>
-<div class="fab-menu" id="fab-menu">
-  <div class="fab-item" onclick="openModal('receita');closeFab()"><span>Nova Receita</span><div class="fab-dot" style="background:var(--green)"></div></div>
-  <div class="fab-item" onclick="openModal('despesa');closeFab()"><span>Nova Despesa</span><div class="fab-dot" style="background:var(--red)"></div></div>
-</div>
-
 </div><!-- /app-screen -->
 
 <!-- MODAL -->
@@ -710,7 +625,6 @@ function go(id){
   document.getElementById('p-'+id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>{ if(n.getAttribute('onclick')===`go('${id}')`) n.classList.add('active'); });
   document.getElementById('page-title').textContent=TITLES[id]||id;
-  updateMobNav(id);
   ({dashboard:renderDashboard,fluxo:renderFluxo,receitas:renderReceitas,despesas:renderDespesas,parcelamentos:renderParc,metas:renderMetas,investimentos:renderInvestimentos,patrimonio:renderPatrimonio,categorias:renderCategorias,recorrencias:renderRecorrencias})[id]?.();
 }
 function updateSaldo(){
@@ -909,33 +823,6 @@ async function delRow(table, id){
   if(table==='parcelamentos'){document.getElementById('filt-parc').innerHTML='<option value="">Todos os meses</option>';}
 }
 
-
-// ── MOBILE NAV ──────────────────────────────────────────────────────────────
-function updateMobNav(id){
-  document.querySelectorAll('.mob-nav-item').forEach(i=>i.classList.remove('active'));
-  const el=document.getElementById('mn-'+id);
-  if(el){el.classList.add('active');}
-  else{document.getElementById('mn-mais')?.classList.add('active');}
-  closeFab();
-}
-function toggleMobMore(){
-  document.getElementById('mob-more').classList.toggle('open');
-  document.getElementById('mob-backdrop').classList.toggle('open');
-  document.getElementById('mn-mais').classList.toggle('active');
-}
-function closeMobMore(){
-  document.getElementById('mob-more').classList.remove('open');
-  document.getElementById('mob-backdrop').classList.remove('open');
-  document.getElementById('mn-mais')?.classList.remove('active');
-}
-function toggleFab(){
-  document.getElementById('fab').classList.toggle('open');
-  document.getElementById('fab-menu').classList.toggle('open');
-}
-function closeFab(){
-  document.getElementById('fab')?.classList.remove('open');
-  document.getElementById('fab-menu')?.classList.remove('open');
-}
 // ══════════════════════════════════════════════════
 // RECORRÊNCIAS
 // ══════════════════════════════════════════════════
@@ -1017,7 +904,7 @@ function upRecCats(){
 // MODAL
 // ══════════════════════════════════════════════════
 let MTYPE='';
-function openModal(type){ closeFab(); closeMobMore();
+function openModal(type){
   MTYPE=type;
   const titles={despesa:'Nova Despesa',receita:'Nova Receita',meta:'Nova Meta de Economia',investimento:'Novo Ativo / Investimento','cat-desp':'Nova Categoria de Despesa','cat-rec':'Nova Categoria de Receita'};
   document.getElementById('modal-title').textContent=titles[type]||'Novo';
