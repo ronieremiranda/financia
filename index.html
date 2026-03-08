@@ -703,7 +703,6 @@ async function bootstrap(user){
   DB.metas=met.data||[];
   // Recorrências carregadas separadamente para não bloquear o app
   const recorr = await SB.from('recorrencias').select('*').eq('user_id',uid).order('created_at').then(r => r).catch(() => ({data:[]}));
-  DB.cartoes=cart.data||[];
   const cartRes = await SB.from('cartoes').select('*').eq('user_id',uid).order('created_at').catch(()=>({data:[]}));
   DB.cartoes=cartRes.data||[];
   DB.recorrencias=recorr.data||[];
