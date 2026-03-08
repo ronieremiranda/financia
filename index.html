@@ -683,7 +683,7 @@ async function bootstrap(user){
 
   const uid=user.id;
   // Parallel fetch all tables
-  const [cd,cr,desp,rec,parc,inv,met,lim,cart] = await Promise.all([
+  const [cd,cr,desp,rec,parc,inv,met,lim] = await Promise.all([
     SB.from('categorias_despesa').select('*').eq('user_id',uid).order('created_at'),
     SB.from('categorias_receita').select('*').eq('user_id',uid).order('created_at'),
     SB.from('despesas').select('*').eq('user_id',uid).order('data',{ascending:false}),
@@ -692,7 +692,6 @@ async function bootstrap(user){
     SB.from('investimentos').select('*').eq('user_id',uid).order('created_at'),
     SB.from('metas').select('*').eq('user_id',uid).order('created_at'),
     SB.from('limites').select('*').eq('user_id',uid),
-    SB.from('cartoes').select('*').eq('user_id',uid).order('created_at'),
   ]);
 
   DB.catDesp = cd.data||[];
@@ -705,6 +704,8 @@ async function bootstrap(user){
   // Recorrências carregadas separadamente para não bloquear o app
   const recorr = await SB.from('recorrencias').select('*').eq('user_id',uid).order('created_at').then(r => r).catch(() => ({data:[]}));
   DB.cartoes=cart.data||[];
+  const cartRes = await SB.from('cartoes').select('*').eq('user_id',uid).order('created_at').catch(()=>({data:[]}));
+  DB.cartoes=cartRes.data||[];
   DB.recorrencias=recorr.data||[];
   // Build limites map
   DB.limites={};
