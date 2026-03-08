@@ -321,6 +321,7 @@ textarea{resize:vertical;min-height:68px}
     <div class="nav-item" onclick="go('patrimonio')"><span class="nav-icon">◈</span> Patrimônio</div>
     <div class="nav-section">Config</div>
     <div class="nav-item" onclick="go('categorias')"><span class="nav-icon">⊞</span> Categorias</div>
+    <div class="nav-item" onclick="go('cartoes')"><span class="nav-icon">▣</span> Cart&#245;es</div>
     <div class="nav-section">Automação</div>
     <div class="nav-item" onclick="go('recorrencias')"><span class="nav-icon">↺</span> Recorrências</div>
   </nav>
@@ -378,10 +379,11 @@ textarea{resize:vertical;min-height:68px}
     <div><div class="sec-title">Receitas</div><div class="sec-sub" id="rec-sub"></div></div>
     <div style="display:flex;gap:8px">
       <input id="search-rec" placeholder="🔍 Buscar…" style="width:200px" oninput="renderReceitas()">
+      <select id="f-rec-pessoa" onchange="renderReceitas()" style="width:130px"><option value="">Todas as pessoas</option><option>Roniere</option><option>Priscila</option><option>Conjunto</option></select>
       <button class="btn btn-primary btn-sm" onclick="openModal('receita')">+ Nova Receita</button>
     </div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Forma</th><th class="tr">Valor</th><th>Nota</th><th></th></tr></thead><tbody id="t-receitas"></tbody></table></div>
+  <div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Forma</th><th>Pessoa</th><th class="tr">Valor</th><th>Nota</th><th></th></tr></thead><tbody id="t-receitas"></tbody></table></div>
 </div>
 
 <!-- DESPESAS -->
@@ -392,10 +394,11 @@ textarea{resize:vertical;min-height:68px}
       <input id="search-desp" placeholder="🔍 Buscar…" style="width:170px" oninput="renderDespesas()">
       <select id="f-desp-cat" onchange="renderDespesas()" style="width:170px"><option value="">Todas as categorias</option></select>
       <select id="f-desp-forma" onchange="renderDespesas()" style="width:150px"><option value="">Todas as formas</option></select>
+      <select id="f-desp-pessoa" onchange="renderDespesas()" style="width:130px"><option value="">Todas as pessoas</option><option>Roniere</option><option>Priscila</option><option>Conjunto</option></select>
       <button class="btn btn-primary btn-sm" onclick="openModal('despesa')">+ Nova Despesa</button>
     </div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Forma</th><th>Tipo</th><th class="tr">Valor</th><th>Nota</th><th></th></tr></thead><tbody id="t-despesas"></tbody></table></div>
+  <div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Forma</th><th>Tipo</th><th>Pessoa</th><th>Cart&#227;o</th><th class="tr">Valor</th><th>Nota</th><th></th></tr></thead><tbody id="t-despesas"></tbody></table></div>
 </div>
 
 <!-- PARCELAMENTOS -->
@@ -498,6 +501,16 @@ textarea{resize:vertical;min-height:68px}
 </div>
 
 
+<!-- CARTOES -->
+<div class="page" id="p-cartoes">
+  <div class="sec-head">
+    <div><div class="sec-title">Cart&#245;es</div><div class="sec-sub" id="cart-sub"></div></div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('cartao')">+ Novo Cart&#227;o</button>
+  </div>
+  <div class="tbl-wrap"><table><thead><tr><th>Nome</th><th>Status</th><th></th></tr></thead><tbody id="t-cartoes"></tbody></table></div>
+</div>
+
+
 <!-- ══ MOBILE BOTTOM NAV ══ -->
 <nav class="mob-nav" id="mob-nav">
   <div class="mob-nav-item active" id="mn-dashboard" onclick="go('dashboard')">
@@ -538,6 +551,7 @@ textarea{resize:vertical;min-height:68px}
   <div class="mob-more-item" onclick="go('patrimonio');closeMobMore()">&#9670; Patrim&#244;nio</div>
   <div class="mob-more-item" onclick="go('metas');closeMobMore()">&#9651; Metas</div>
   <div class="mob-more-item" onclick="go('categorias');closeMobMore()">&#9783; Categorias</div>
+  <div class="mob-more-item" onclick="go('cartoes');closeMobMore()">&#9632; Cart&#245;es</div>
 </div>
 
 <script>
@@ -582,7 +596,8 @@ const DEFAULT_LIMITES = {
 // STATE
 // ══════════════════════════════════════════════════
 let USER = null;
-let DB = { catDesp:[], catRec:[], despesas:[], receitas:[], parcelamentos:[], investimentos:[], metas:[], limites:{}, recorrencias:[] };
+let DB = { catDesp:[], catRec:[], despesas:[], receitas:[], parcelamentos:[], investimentos:[], metas:[], limites:{}, recorrencias:[], cartoes:[] };
+let MEDIT_ID = null;
 let REF_MES = 3, REF_ANO = 2026;
 
 // ══════════════════════════════════════════════════
@@ -668,7 +683,7 @@ async function bootstrap(user){
 
   const uid=user.id;
   // Parallel fetch all tables
-  const [cd,cr,desp,rec,parc,inv,met,lim] = await Promise.all([
+  const [cd,cr,desp,rec,parc,inv,met,lim,cart] = await Promise.all([
     SB.from('categorias_despesa').select('*').eq('user_id',uid).order('created_at'),
     SB.from('categorias_receita').select('*').eq('user_id',uid).order('created_at'),
     SB.from('despesas').select('*').eq('user_id',uid).order('data',{ascending:false}),
@@ -677,6 +692,7 @@ async function bootstrap(user){
     SB.from('investimentos').select('*').eq('user_id',uid).order('created_at'),
     SB.from('metas').select('*').eq('user_id',uid).order('created_at'),
     SB.from('limites').select('*').eq('user_id',uid),
+    SB.from('cartoes').select('*').eq('user_id',uid).order('created_at'),
   ]);
 
   DB.catDesp = cd.data||[];
@@ -688,6 +704,7 @@ async function bootstrap(user){
   DB.metas=met.data||[];
   // Recorrências carregadas separadamente para não bloquear o app
   const recorr = await SB.from('recorrencias').select('*').eq('user_id',uid).order('created_at').then(r => r).catch(() => ({data:[]}));
+  DB.cartoes=cart.data||[];
   DB.recorrencias=recorr.data||[];
   // Build limites map
   DB.limites={};
@@ -755,6 +772,29 @@ function updateSaldo(){
 // ══════════════════════════════════════════════════
 // DASHBOARD
 // ══════════════════════════════════════════════════
+function editLanc(table, id){
+  MEDIT_ID = id;
+  if(table==='despesas') openModal('edit-despesa');
+  else openModal('edit-receita');
+}
+
+// ══════════════════════════════════════════════════
+// CARTOES
+// ══════════════════════════════════════════════════
+function renderCartoes(){
+  document.getElementById('cart-sub').textContent = DB.cartoes.length+' cart\u00f5es cadastrados';
+  document.getElementById('t-cartoes').innerHTML = DB.cartoes.length
+    ? DB.cartoes.map(c=>`<tr><td style="font-weight:500">${c.nome}</td><td><span class="badge ${c.ativo?'b-green':'b-gray'}">${c.ativo?'Ativo':'Inativo'}</span></td><td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="toggleCartao('${c.id}',${!c.ativo})">${c.ativo?'Desativar':'Ativar'}</button> <button class="btn btn-danger btn-sm" onclick="delRow('cartoes','${c.id}')">✕</button></td></tr>`).join('')
+    : `<tr><td colspan="3"><div class="empty"><div class="empty-icon">💳</div><div class="empty-msg">Nenhum cart\u00e3o cadastrado</div></div></td></tr>`;
+}
+
+async function toggleCartao(id, ativo){
+  await SB.from('cartoes').update({ativo}).eq('id',id);
+  const c=DB.cartoes.find(x=>x.id===id);
+  if(c) c.ativo=ativo;
+  renderCartoes();
+}
+
 function renderDashboard(){
   const td=totalDesp(),tr2=totalRec(),s=tr2-td,inv=totalInv(),parc=totalParcRest();
   document.getElementById('kpi-row').innerHTML=[
@@ -764,6 +804,29 @@ function renderDashboard(){
     {l:'Carteira Invest.',v:BRL(inv),s:DB.investimentos.length+' ativos',ic:'△',c:'var(--purple)'},
     {l:'Parcelamentos',v:BRL(parc),s:'restante total',ic:'⋯',c:'var(--yellow)'},
   ].map(k=>`<div class="kpi"><div class="kpi-accent" style="background:${k.c}"></div><div class="kpi-icon">${k.ic}</div><div class="kpi-label">${k.l}</div><div class="kpi-val" style="color:${k.c}">${k.v}</div><div class="kpi-sub">${k.s}</div></div>`).join('');
+
+  // Pessoa breakdown
+  const pessoas=['Roniere','Priscila','Conjunto'];
+  const mesDesp=DB.despesas.filter(d=>{ const [y,m]=( d.data||'').split('-'); return parseInt(y)===REF_ANO&&parseInt(m)===REF_MES; });
+  const mesRec=DB.receitas.filter(r=>{ const [y,m]=(r.data||'').split('-'); return parseInt(y)===REF_ANO&&parseInt(m)===REF_MES; });
+  const pessoaRows=pessoas.map(p=>{
+    const d=mesDesp.filter(x=>x.pessoa===p).reduce((s,x)=>s+Number(x.valor),0);
+    const r=mesRec.filter(x=>x.pessoa===p).reduce((s,x)=>s+Number(x.valor),0);
+    return d||r?`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--s2)"><span style="font-weight:500">${p}</span><span style="display:flex;gap:16px;font-size:13px"><span style="color:var(--green)">+${BRL(r)}</span><span style="color:var(--red)">-${BRL(d)}</span></span></div>`:'';
+  }).join('');
+  const sem=mesDesp.filter(x=>!x.pessoa).reduce((s,x)=>s+Number(x.valor),0);
+  const semR=mesRec.filter(x=>!x.pessoa).reduce((s,x)=>s+Number(x.valor),0);
+  const semRow=(sem||semR)?`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;color:var(--text3);font-size:13px"><span>N\u00e3o definido</span><span style="display:flex;gap:16px"><span>+${BRL(semR)}</span><span>-${BRL(sem)}</span></span></div>`:'';
+  if(pessoaRows||semRow){
+    const card=document.createElement('div');
+    card.className='card'; card.style.marginTop='16px';
+    card.innerHTML=`<div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Por Pessoa (m\u00eas atual)</div>${pessoaRows}${semRow}`;
+    const kpi=document.getElementById('kpi-row');
+    const existing=document.getElementById('dash-pessoa-card');
+    if(existing) existing.remove();
+    card.id='dash-pessoa-card';
+    kpi.parentNode.insertBefore(card,kpi.nextSibling);
+  }
 
   // Alerts
   const gc=gastosCat(); let al='';
@@ -830,11 +893,12 @@ function renderFluxo(){
 // ══════════════════════════════════════════════════
 function renderReceitas(){
   const q=(document.getElementById('search-rec').value||'').toLowerCase();
-  const items=DB.receitas.filter(r=>!q||r.descricao.toLowerCase().includes(q)||r.categoria.toLowerCase().includes(q));
+  const pessoaRec=document.getElementById('f-rec-pessoa')?document.getElementById('f-rec-pessoa').value:'';
+  const items=DB.receitas.filter(r=>{ if(q&&!r.descricao.toLowerCase().includes(q)&&!r.categoria.toLowerCase().includes(q))return false; if(pessoaRec&&(r.pessoa||'')!==pessoaRec)return false; return true; });
   const tot=items.reduce((s,r)=>s+Number(r.valor),0);
   document.getElementById('rec-sub').textContent=`${items.length} registros · Total: ${BRL(tot)}`;
   const tb={'Salário / Pró-labore':'b-green','Participação / Projetos':'b-blue','Dividendos':'b-purple','Rendimento':'b-yellow'};
-  document.getElementById('t-receitas').innerHTML=items.map(r=>`<tr><td class="mono">${fmtD(r.data)}</td><td style="font-weight:500">${r.descricao}</td><td><span style="color:${catRecObj(r.categoria).cor}">${catRecObj(r.categoria).emoji}</span> ${r.categoria}</td><td><span class="badge ${tb[r.tipo]||'b-gray'}">${r.tipo}</span></td><td style="font-size:12px;color:var(--text2)">${r.forma_recebimento}</td><td class="mono tr" style="color:var(--green);font-weight:600">${BRL(r.valor)}</td><td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text3);font-size:12px">${r.nota||''}</td><td><button class="btn btn-danger btn-sm" onclick="delRow('receitas','${r.id}')">✕</button></td></tr>`).join('')||`<tr><td colspan="8"><div class="empty"><div class="empty-icon">💸</div><div class="empty-msg">Nenhuma receita</div><div class="empty-sub">Clique em "+ Nova Receita"</div></div></td></tr>`;
+  document.getElementById('t-receitas').innerHTML=items.map(r=>`<tr><td class="mono">${fmtD(r.data)}</td><td style="font-weight:500">${r.descricao}</td><td><span style="color:${catRecObj(r.categoria).cor}">${catRecObj(r.categoria).emoji}</span> ${r.categoria}</td><td><span class="badge ${tb[r.tipo]||'b-gray'}">${r.tipo}</span></td><td style="font-size:12px;color:var(--text2)">${r.forma_recebimento}</td><td style="font-size:12px;color:var(--text2)">${r.pessoa||'<span style="color:var(--text3)">—</span>'}</td><td class="mono tr" style="color:var(--green);font-weight:600">${BRL(r.valor)}</td><td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text3);font-size:12px">${r.nota||''}</td><td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="editLanc('receitas','${r.id}')">✎</button> <button class="btn btn-danger btn-sm" onclick="delRow('receitas','${r.id}')">✕</button></td></tr>`).join('')||`<tr><td colspan="9"><div class="empty"><div class="empty-icon">💸</div><div class="empty-msg">Nenhuma receita</div><div class="empty-sub">Clique em "+ Nova Receita"</div></div></td></tr>`;
 }
 
 // ══════════════════════════════════════════════════
@@ -846,11 +910,13 @@ function renderDespesas(){
   if(ff.options.length===1) FORMAS.forEach(f=>{ const o=document.createElement('option');o.value=f;o.textContent=f;ff.appendChild(o); });
   const q=(document.getElementById('search-desp').value||'').toLowerCase();
   const cat=fc.value,forma=ff.value;
-  const items=DB.despesas.filter(d=>{ if(q&&!d.descricao.toLowerCase().includes(q)&&!d.categoria.toLowerCase().includes(q))return false; if(cat&&d.categoria!==cat)return false; if(forma&&d.forma_pagamento!==forma)return false; return true; });
+  const pessoa=document.getElementById('f-desp-pessoa')?document.getElementById('f-desp-pessoa').value:'';
+  const items=DB.despesas.filter(d=>{ if(q&&!d.descricao.toLowerCase().includes(q)&&!d.categoria.toLowerCase().includes(q))return false; if(cat&&d.categoria!==cat)return false; if(forma&&d.forma_pagamento!==forma)return false; if(pessoa&&(d.pessoa||'')!==pessoa)return false; return true; });
   const tot=items.reduce((s,d)=>s+Number(d.valor),0);
   document.getElementById('desp-sub').textContent=`${items.length} registros · Total: ${BRL(tot)}`;
   const tb={'À Vista':'b-blue','Parcelada':'b-purple','Recorrente':'b-green','Pagamento Conta':'b-yellow'};
-  document.getElementById('t-despesas').innerHTML=items.map(d=>`<tr><td class="mono">${fmtD(d.data)}</td><td style="font-weight:500">${d.descricao}</td><td><span style="color:${catDespObj(d.categoria).cor}">${catDespObj(d.categoria).emoji}</span> ${d.categoria}</td><td style="font-size:12px;color:var(--text2)">${d.forma_pagamento}</td><td><span class="badge ${tb[d.tipo]||'b-gray'}">${d.tipo}</span></td><td class="mono tr" style="color:var(--red);font-weight:600">${BRL(d.valor)}</td><td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text3);font-size:12px">${d.nota||''}</td><td><button class="btn btn-danger btn-sm" onclick="delRow('despesas','${d.id}')">✕</button></td></tr>`).join('')||`<tr><td colspan="8"><div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">Nenhuma despesa</div></div></td></tr>`;
+  const cartMap={}; DB.cartoes.forEach(c=>cartMap[c.id]=c.nome);
+  document.getElementById('t-despesas').innerHTML=items.map(d=>`<tr><td class="mono">${fmtD(d.data)}</td><td style="font-weight:500">${d.descricao}</td><td><span style="color:${catDespObj(d.categoria).cor}">${catDespObj(d.categoria).emoji}</span> ${d.categoria}</td><td style="font-size:12px;color:var(--text2)">${d.forma_pagamento}</td><td><span class="badge ${tb[d.tipo]||'b-gray'}">${d.tipo}</span></td><td style="font-size:12px;color:var(--text2)">${d.pessoa||'<span style="color:var(--text3)">—</span>'}</td><td style="font-size:12px;color:var(--text2)">${d.cartao_id&&cartMap[d.cartao_id]?cartMap[d.cartao_id]:'<span style="color:var(--text3)">—</span>'}</td><td class="mono tr" style="color:var(--red);font-weight:600">${BRL(d.valor)}</td><td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text3);font-size:12px">${d.nota||''}</td><td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="editLanc('despesas','${d.id}')">✎</button> <button class="btn btn-danger btn-sm" onclick="delRow('despesas','${d.id}')">✕</button></td></tr>`).join('')||`<tr><td colspan="10"><div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">Nenhuma despesa</div></div></td></tr>`;
 }
 
 // ══════════════════════════════════════════════════
@@ -929,14 +995,14 @@ async function delRow(table, id){
   const {error}=await SB.from(table).delete().eq('id',id);
   if(error){loading(false);toast('Erro: '+error.message,'var(--red)');return;}
   // Update local state
-  const map={despesas:'despesas',receitas:'receitas',parcelamentos:'parcelamentos',investimentos:'investimentos',metas:'metas',categorias_despesa:'catDesp',categorias_receita:'catRec',recorrencias:'recorrencias'};
+  const map={despesas:'despesas',receitas:'receitas',parcelamentos:'parcelamentos',investimentos:'investimentos',metas:'metas',categorias_despesa:'catDesp',categorias_receita:'catRec',recorrencias:'recorrencias',cartoes:'cartoes'};
   const key=map[table];
   if(key) DB[key]=DB[key].filter(r=>r.id!==id);
   loading(false);
   toast('Removido!','var(--red)');
   // Re-render current page
   const active=document.querySelector('.page.active');
-  if(active){const pid=active.id.replace('p-','');({dashboard:renderDashboard,fluxo:renderFluxo,receitas:renderReceitas,despesas:renderDespesas,parcelamentos:renderParc,metas:renderMetas,investimentos:renderInvestimentos,patrimonio:renderPatrimonio,categorias:renderCategorias})[pid]?.();}
+  if(active){const pid=active.id.replace('p-','');({dashboard:renderDashboard,fluxo:renderFluxo,receitas:renderReceitas,despesas:renderDespesas,parcelamentos:renderParc,metas:renderMetas,investimentos:renderInvestimentos,patrimonio:renderPatrimonio,categorias:renderCategorias,cartoes:renderCartoes,recorrencias:renderRecorrencias})[pid]?.();}
   updateSaldo();
   if(table==='parcelamentos'){document.getElementById('filt-parc').innerHTML='<option value="">Todos os meses</option>';}
 }
@@ -1050,7 +1116,7 @@ function upRecCats(){
 let MTYPE='';
 function openModal(type){ closeFab(); closeMobMore();
   MTYPE=type;
-  const titles={despesa:'Nova Despesa',receita:'Nova Receita',meta:'Nova Meta de Economia',investimento:'Novo Ativo / Investimento','cat-desp':'Nova Categoria de Despesa','cat-rec':'Nova Categoria de Receita'};
+  const titles={despesa:'Nova Despesa',receita:'Nova Receita',meta:'Nova Meta de Economia',investimento:'Novo Ativo / Investimento','cat-desp':'Nova Categoria de Despesa','cat-rec':'Nova Categoria de Receita',cartao:'Novo Cart\u00e3o','edit-despesa':'Editar Despesa','edit-receita':'Editar Receita'};
   document.getElementById('modal-title').textContent=titles[type]||'Novo';
   document.getElementById('modal-bd').innerHTML=buildForm(type);
   document.getElementById('overlay').classList.add('open');
@@ -1064,22 +1130,34 @@ function buildForm(type){
   const formaOpts=FORMAS.map(f=>`<option>${f}</option>`).join('');
   const today=new Date().toISOString().split('T')[0];
 
-  if(type==='despesa') return `
+  if(type==='despesa'||type==='edit-despesa'){
+  const rec=type==='edit-despesa'?DB.despesas.find(x=>x.id===MEDIT_ID):{};
+  const cartOpts=DB.cartoes.filter(c=>c.ativo).map(c=>`<option value="${c.id}" ${rec.cartao_id===c.id?'selected':''}>${c.nome}</option>`).join('');
+  const pessoaOpts=['','Roniere','Priscila','Conjunto'].map(p=>`<option value="${p}" ${(rec.pessoa||'')=== p?'selected':''}>${p||'Não definido'}</option>`).join('');
+  const today=new Date().toISOString().split('T')[0];
+  return `
     <div class="fg-row"><div class="fg"><label>Data</label><input type="date" id="f-data" value="${today}"></div><div class="fg"><label>Valor (R$)</label><input type="number" id="f-valor" step="0.01" min="0" placeholder="0,00" oninput="upPP()"></div></div>
-    <div class="fg"><label>Descrição</label><input type="text" id="f-desc" placeholder="Ex: Netflix, Farmácia, IPTU…"></div>
+    <div class="fg"><label>Descrição</label><input type="text" id="f-desc" placeholder="Ex: Netflix, Farmácia, IPTU…" value="${rec.descricao||''}"></div>
     <div class="fg-row"><div class="fg"><label>Categoria</label><select id="f-cat">${catDespOpts}</select></div><div class="fg"><label>Forma de Pagamento</label><select id="f-forma">${formaOpts}</select></div></div>
     <div class="fg-row"><div class="fg"><label>Tipo</label><select id="f-tipo" onchange="upParcFields()"><option>À Vista</option><option>Parcelada</option><option>Recorrente</option><option>Pagamento Conta</option></select></div><div class="fg" id="g-np" style="display:none"><label>Nº Parcelas</label><input type="number" id="f-np" min="2" max="60" value="12" oninput="upPP()"></div></div>
     <div class="fg" id="g-pa" style="display:none"><label>Parcela atual (nesta fatura)</label><input type="number" id="f-pa" min="1" value="1" oninput="upPP()"></div>
     <div class="fg"><label>Anotação</label><textarea id="f-nota" placeholder="Observações, lembrete…"></textarea></div>
     <div class="parc-preview" id="parc-preview"><div class="pp-title">📅 Distribuição das parcelas</div><div class="pp-grid" id="pp-grid"></div></div>`;
-
-  if(type==='receita') return `
+  }
+  if(type==='receita'||type==='edit-receita'){
+  const rec2=type==='edit-receita'?DB.receitas.find(x=>x.id===MEDIT_ID):{};
+  const pessoaOptsRec=['','Roniere','Priscila','Conjunto'].map(p=>`<option value="${p}" ${(rec2.pessoa||'')=== p?'selected':''}>${p||'Não definido'}</option>`).join('');
+  const today=new Date().toISOString().split('T')[0];
+  return `
     <div class="fg-row"><div class="fg"><label>Data</label><input type="date" id="f-data" value="${today}"></div><div class="fg"><label>Valor (R$)</label><input type="number" id="f-valor" step="0.01" min="0" placeholder="0,00"></div></div>
-    <div class="fg"><label>Descrição</label><input type="text" id="f-desc" placeholder="Ex: Pró-labore março, Dividendos ITUB4…"></div>
+    <div class="fg"><label>Descrição</label><input type="text" id="f-desc" placeholder="Ex: Pró-labore março, Dividendos ITUB4…" value="${rec2.descricao||''}"></div>
     <div class="fg-row"><div class="fg"><label>Categoria</label><select id="f-cat-rec">${catRecOpts}</select></div><div class="fg"><label>Tipo</label><select id="f-tipo-rec">${TIPOS_REC.map(t=>`<option>${t}</option>`).join('')}</select></div></div>
     <div class="fg"><label>Forma de Recebimento</label><select id="f-forma-rec">${formaOpts}</select></div>
     <div class="fg"><label>Anotação</label><textarea id="f-nota" placeholder="Competência, fonte, observações…"></textarea></div>`;
-
+  }
+  if(type==='cartao') return `
+    <div class="fg"><label>Nome do Cart\u00e3o</label><input type="text" id="f-nome" placeholder="Ex: Nubank, Ita\u00fa Visa\u2026"></div>
+    `;
   if(type==='meta') return `
     <div class="fg"><label>Nome da Meta</label><input type="text" id="f-nome" placeholder="Ex: Reserva de Emergência…"></div>
     <div class="fg-row"><div class="fg"><label>Já economizado (R$)</label><input type="number" id="f-atual" step="0.01" min="0" value="0"></div><div class="fg"><label>Meta total (R$)</label><input type="number" id="f-meta-v" step="0.01" min="0"></div></div>
@@ -1145,7 +1223,9 @@ async function saveModal(){
       const forma_pagamento=document.getElementById('f-forma').value;
       const tipo=document.getElementById('f-tipo').value;
       const nota=document.getElementById('f-nota').value;
-      const {data:row,error}=await SB.from('despesas').insert({user_id:uid,data,descricao,categoria,forma_pagamento,tipo,valor,nota}).select().single();
+      const pessoa=document.getElementById('f-pessoa').value||null;
+      const cartao_id=document.getElementById('f-cartao').value||null;
+      const {data:row,error}=await SB.from('despesas').insert({user_id:uid,data,descricao,categoria,forma_pagamento,tipo,valor,nota,pessoa,cartao_id}).select().single();
       if(error) throw error;
       DB.despesas.unshift(row);
       if(tipo==='Parcelada'){
@@ -1166,10 +1246,57 @@ async function saveModal(){
       const tipo=document.getElementById('f-tipo-rec').value;
       const forma_recebimento=document.getElementById('f-forma-rec').value;
       const nota=document.getElementById('f-nota').value;
-      const {data:row,error}=await SB.from('receitas').insert({user_id:uid,data,descricao,categoria,tipo,forma_recebimento,valor,nota}).select().single();
+      const pessoa=document.getElementById('f-pessoa-rec').value||null;
+      const {data:row,error}=await SB.from('receitas').insert({user_id:uid,data,descricao,categoria,tipo,forma_recebimento,valor,nota,pessoa}).select().single();
       if(error) throw error;
       DB.receitas.unshift(row);
       toast('✅ Receita salva!','var(--green)');
+    }
+    else if(type==='edit-despesa'){
+      const id=MEDIT_ID;
+      const data=document.getElementById('f-data').value;
+      const valor=parseFloat(document.getElementById('f-valor').value);
+      const descricao=document.getElementById('f-desc').value.trim();
+      if(!data||!valor||!descricao){loading(false);alert('Preencha data, descrição e valor.');return;}
+      const categoria=document.getElementById('f-cat').value;
+      const forma_pagamento=document.getElementById('f-forma').value;
+      const tipo=document.getElementById('f-tipo').value;
+      const nota=document.getElementById('f-nota').value;
+      const pessoa=document.getElementById('f-pessoa').value||null;
+      const cartao_id=document.getElementById('f-cartao').value||null;
+      const {error}=await SB.from('despesas').update({data,descricao,categoria,forma_pagamento,tipo,valor,nota,pessoa,cartao_id}).eq('id',id);
+      if(error) throw error;
+      const i=DB.despesas.findIndex(x=>x.id===id);
+      if(i>=0) DB.despesas[i]={...DB.despesas[i],data,descricao,categoria,forma_pagamento,tipo,valor,nota,pessoa,cartao_id};
+      toast('✅ Despesa atualizada!','var(--green)');
+      renderDespesas();
+    }
+    else if(type==='edit-receita'){
+      const id=MEDIT_ID;
+      const data=document.getElementById('f-data').value;
+      const valor=parseFloat(document.getElementById('f-valor').value);
+      const descricao=document.getElementById('f-desc').value.trim();
+      if(!data||!valor||!descricao){loading(false);alert('Preencha data, descrição e valor.');return;}
+      const categoria=document.getElementById('f-cat-rec').value;
+      const tipo=document.getElementById('f-tipo-rec').value;
+      const forma_recebimento=document.getElementById('f-forma-rec').value;
+      const nota=document.getElementById('f-nota').value;
+      const pessoa=document.getElementById('f-pessoa-rec').value||null;
+      const {error}=await SB.from('receitas').update({data,descricao,categoria,tipo,forma_recebimento,valor,nota,pessoa}).eq('id',id);
+      if(error) throw error;
+      const i=DB.receitas.findIndex(x=>x.id===id);
+      if(i>=0) DB.receitas[i]={...DB.receitas[i],data,descricao,categoria,tipo,forma_recebimento,valor,nota,pessoa};
+      toast('✅ Receita atualizada!','var(--green)');
+      renderReceitas();
+    }
+    else if(type==='cartao'){
+      const nome=document.getElementById('f-nome').value.trim();
+      if(!nome){loading(false);alert('Informe o nome do cartão.');return;}
+      const {data:row,error}=await SB.from('cartoes').insert({user_id:uid,nome}).select().single();
+      if(error) throw error;
+      DB.cartoes.push(row);
+      toast('✅ Cartão salvo!','var(--green)');
+      renderCartoes();
     }
     else if(type==='meta'){
       const nome=document.getElementById('f-nome').value.trim();
