@@ -9,6 +9,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#07080f">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Financia">
@@ -726,7 +727,6 @@ async function bootstrap(user){
     loading(false);
     document.getElementById('auth-screen').style.display='flex';
     document.getElementById('app-screen').style.display='none';
-    alert('Erro ao carregar: ' + e.message + '\n\nVerifique o console para mais detalhes.');
     console.error('Bootstrap error:', e);
   }
 }
