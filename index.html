@@ -678,6 +678,7 @@ async function doLogout(){ await SB.auth.signOut(); location.reload(); }
 async function bootstrap(user){
   USER=user;
   loading(true,'Carregando seus dados…');
+  try {
   document.getElementById('sb-email').textContent=user.email;
   document.getElementById('sb-avatar').textContent=user.email[0].toUpperCase();
 
@@ -721,6 +722,13 @@ async function bootstrap(user){
   updateSaldo();
   // Processa recorrências em segundo plano sem travar o login
   processarRecorrencias().catch(e => console.warn('Recorrências:', e));
+  } catch(e) {
+    loading(false);
+    document.getElementById('auth-screen').style.display='flex';
+    document.getElementById('app-screen').style.display='none';
+    alert('Erro ao carregar: ' + e.message + '\n\nVerifique o console para mais detalhes.');
+    console.error('Bootstrap error:', e);
+  }
 }
 
 async function seedCategories(uid){
