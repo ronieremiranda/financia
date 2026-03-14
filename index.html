@@ -684,17 +684,19 @@ async function bootstrap(user){
   document.getElementById('sb-avatar').textContent=user.email[0].toUpperCase();
 
   const uid=user.id;
+  console.log('[bootstrap] iniciando queries para uid:', uid);
   // Parallel fetch all tables
   const [cd,cr,desp,rec,parc,inv,met,lim] = await Promise.all([
-    SB.from('categorias_despesa').select('*').eq('user_id',uid).order('created_at'),
-    SB.from('categorias_receita').select('*').eq('user_id',uid).order('created_at'),
-    SB.from('despesas').select('*').eq('user_id',uid).order('data',{ascending:false}),
-    SB.from('receitas').select('*').eq('user_id',uid).order('data',{ascending:false}),
-    SB.from('parcelamentos').select('*').eq('user_id',uid).order('created_at'),
-    SB.from('investimentos').select('*').eq('user_id',uid).order('created_at'),
-    SB.from('metas').select('*').eq('user_id',uid).order('created_at'),
-    SB.from('limites').select('*').eq('user_id',uid),
+    Promise.resolve(SB.from('categorias_despesa').select('*').eq('user_id',uid).order('created_at')),
+    Promise.resolve(SB.from('categorias_receita').select('*').eq('user_id',uid).order('created_at')),
+    Promise.resolve(SB.from('despesas').select('*').eq('user_id',uid).order('data',{ascending:false})),
+    Promise.resolve(SB.from('receitas').select('*').eq('user_id',uid).order('data',{ascending:false})),
+    Promise.resolve(SB.from('parcelamentos').select('*').eq('user_id',uid).order('created_at')),
+    Promise.resolve(SB.from('investimentos').select('*').eq('user_id',uid).order('created_at')),
+    Promise.resolve(SB.from('metas').select('*').eq('user_id',uid).order('created_at')),
+    Promise.resolve(SB.from('limites').select('*').eq('user_id',uid)),
   ]);
+  console.log('[bootstrap] Promise.all resolvido. Erros:', cd?.error?.message, desp?.error?.message);
 
   DB.catDesp = cd.data||[];
   DB.catRec  = cr.data||[];
@@ -704,8 +706,10 @@ async function bootstrap(user){
   DB.investimentos=inv.data||[];
   DB.metas=met.data||[];
   // Recorrências carregadas separadamente para não bloquear o app
+  console.log('[bootstrap] carregando recorrencias e cartoes...');
   const recorr = await Promise.resolve(SB.from('recorrencias').select('*').eq('user_id',uid).order('created_at')).catch(() => ({data:[]}));
   const cartRes = await Promise.resolve(SB.from('cartoes').select('*').eq('user_id',uid).order('created_at')).catch(()=>({data:[]}));
+  console.log('[bootstrap] recorrencias e cartoes ok');
   DB.cartoes=cartRes.data||[];
   DB.recorrencias=recorr.data||[];
   // Build limites map
@@ -713,8 +717,10 @@ async function bootstrap(user){
   (lim.data||[]).forEach(l=>DB.limites[l.categoria]=Number(l.valor));
 
   // First time: seed default categories
+  console.log('[bootstrap] catDesp.length:', DB.catDesp.length, 'limites:', Object.keys(DB.limites).length);
   if(!DB.catDesp.length) await seedCategories(uid);
   if(!Object.keys(DB.limites).length) await seedLimites(uid);
+  console.log('[bootstrap] seeds ok, chamando loading(false)');
 
   loading(false);
   document.getElementById('auth-screen').style.display='none';
