@@ -1149,6 +1149,7 @@ function buildForm(type){
     <div class="fg-row"><div class="fg"><label>Categoria</label><select id="f-cat">${catDespOpts}</select></div><div class="fg"><label>Forma de Pagamento</label><select id="f-forma">${formaOpts}</select></div></div>
     <div class="fg-row"><div class="fg"><label>Tipo</label><select id="f-tipo" onchange="upParcFields()"><option>À Vista</option><option>Parcelada</option><option>Recorrente</option><option>Pagamento Conta</option></select></div><div class="fg" id="g-np" style="display:none"><label>Nº Parcelas</label><input type="number" id="f-np" min="2" max="60" value="12" oninput="upPP()"></div></div>
     <div class="fg" id="g-pa" style="display:none"><label>Parcela atual (nesta fatura)</label><input type="number" id="f-pa" min="1" value="1" oninput="upPP()"></div>
+    <div class="fg-row"><div class="fg"><label>Pessoa</label><select id="f-pessoa"><option value="">Não definido</option><option>Roniere</option><option>Priscila</option><option>Conjunto</option></select></div><div class="fg"><label>Cartão</label><select id="f-cartao"><option value="">Sem cartão</option>${cartOpts}</select></div></div>
     <div class="fg"><label>Anotação</label><textarea id="f-nota" placeholder="Observações, lembrete…"></textarea></div>
     <div class="parc-preview" id="parc-preview"><div class="pp-title">📅 Distribuição das parcelas</div><div class="pp-grid" id="pp-grid"></div></div>`;
   }
@@ -1161,6 +1162,7 @@ function buildForm(type){
     <div class="fg"><label>Descrição</label><input type="text" id="f-desc" placeholder="Ex: Pró-labore março, Dividendos ITUB4…" value="${rec2.descricao||''}"></div>
     <div class="fg-row"><div class="fg"><label>Categoria</label><select id="f-cat-rec">${catRecOpts}</select></div><div class="fg"><label>Tipo</label><select id="f-tipo-rec">${TIPOS_REC.map(t=>`<option>${t}</option>`).join('')}</select></div></div>
     <div class="fg"><label>Forma de Recebimento</label><select id="f-forma-rec">${formaOpts}</select></div>
+    <div class="fg"><label>Pessoa</label><select id="f-pessoa-rec"><option value="">Não definido</option><option>Roniere</option><option>Priscila</option><option>Conjunto</option></select></div>
     <div class="fg"><label>Anotação</label><textarea id="f-nota" placeholder="Competência, fonte, observações…"></textarea></div>`;
   }
   if(type==='cartao') return `
