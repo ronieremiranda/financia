@@ -685,18 +685,30 @@ async function bootstrap(user){
 
   const uid=user.id;
   console.log('[bootstrap] iniciando queries para uid:', uid);
-  // Parallel fetch all tables
-  const [cd,cr,desp,rec,parc,inv,met,lim] = await Promise.all([
-    Promise.resolve(SB.from('categorias_despesa').select('*').eq('user_id',uid).order('created_at')),
-    Promise.resolve(SB.from('categorias_receita').select('*').eq('user_id',uid).order('created_at')),
-    Promise.resolve(SB.from('despesas').select('*').eq('user_id',uid).order('data',{ascending:false})),
-    Promise.resolve(SB.from('receitas').select('*').eq('user_id',uid).order('data',{ascending:false})),
-    Promise.resolve(SB.from('parcelamentos').select('*').eq('user_id',uid).order('created_at')),
-    Promise.resolve(SB.from('investimentos').select('*').eq('user_id',uid).order('created_at')),
-    Promise.resolve(SB.from('metas').select('*').eq('user_id',uid).order('created_at')),
-    Promise.resolve(SB.from('limites').select('*').eq('user_id',uid)),
-  ]);
-  console.log('[bootstrap] Promise.all resolvido. Erros:', cd?.error?.message, desp?.error?.message);
+  console.log('[bootstrap] q1 categorias_despesa...');
+  const cd  = await SB.from('categorias_despesa').select('*').eq('user_id',uid).order('created_at');
+  console.log('[bootstrap] q1 ok', cd?.error?.message||'sem erro');
+  console.log('[bootstrap] q2 categorias_receita...');
+  const cr  = await SB.from('categorias_receita').select('*').eq('user_id',uid).order('created_at');
+  console.log('[bootstrap] q2 ok', cr?.error?.message||'sem erro');
+  console.log('[bootstrap] q3 despesas...');
+  const desp= await SB.from('despesas').select('*').eq('user_id',uid).order('data',{ascending:false});
+  console.log('[bootstrap] q3 ok', desp?.error?.message||'sem erro');
+  console.log('[bootstrap] q4 receitas...');
+  const rec = await SB.from('receitas').select('*').eq('user_id',uid).order('data',{ascending:false});
+  console.log('[bootstrap] q4 ok', rec?.error?.message||'sem erro');
+  console.log('[bootstrap] q5 parcelamentos...');
+  const parc= await SB.from('parcelamentos').select('*').eq('user_id',uid).order('created_at');
+  console.log('[bootstrap] q5 ok', parc?.error?.message||'sem erro');
+  console.log('[bootstrap] q6 investimentos...');
+  const inv = await SB.from('investimentos').select('*').eq('user_id',uid).order('created_at');
+  console.log('[bootstrap] q6 ok', inv?.error?.message||'sem erro');
+  console.log('[bootstrap] q7 metas...');
+  const met = await SB.from('metas').select('*').eq('user_id',uid).order('created_at');
+  console.log('[bootstrap] q7 ok', met?.error?.message||'sem erro');
+  console.log('[bootstrap] q8 limites...');
+  const lim = await SB.from('limites').select('*').eq('user_id',uid);
+  console.log('[bootstrap] q8 ok', lim?.error?.message||'sem erro');
 
   DB.catDesp = cd.data||[];
   DB.catRec  = cr.data||[];
