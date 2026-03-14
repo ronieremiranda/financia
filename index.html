@@ -704,8 +704,8 @@ async function bootstrap(user){
   DB.investimentos=inv.data||[];
   DB.metas=met.data||[];
   // Recorrências carregadas separadamente para não bloquear o app
-  const recorr = await SB.from('recorrencias').select('*').eq('user_id',uid).order('created_at').then(r => r).catch(() => ({data:[]}));
-  const cartRes = await SB.from('cartoes').select('*').eq('user_id',uid).order('created_at').catch(()=>({data:[]}));
+  const recorr = await Promise.resolve(SB.from('recorrencias').select('*').eq('user_id',uid).order('created_at')).catch(() => ({data:[]}));
+  const cartRes = await Promise.resolve(SB.from('cartoes').select('*').eq('user_id',uid).order('created_at')).catch(()=>({data:[]}));
   DB.cartoes=cartRes.data||[];
   DB.recorrencias=recorr.data||[];
   // Build limites map
