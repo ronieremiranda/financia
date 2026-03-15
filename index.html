@@ -708,58 +708,51 @@ async function doLogout(){ await SB.auth.signOut(); location.reload(); }
 // ══════════════════════════════════════════════════
 // BOOTSTRAP — load all data
 // ══════════════════════════════════════════════════
+// Helper: query com timeout de 8s para não travar infinitamente
+function qry(promise){ return new Promise((res)=>{ const t=setTimeout(()=>res({data:[],error:'timeout'}),8000); Promise.resolve(promise).then(r=>{clearTimeout(t);res(r);}).catch(()=>{clearTimeout(t);res({data:[],error:'error'});}); }); }
+
 async function bootstrap(user){
   USER=user;
   loading(true,'Carregando seus dados…');
   try {
-  document.getElementById('sb-email').textContent=user.email;
-  document.getElementById('sb-avatar').textContent=user.email[0].toUpperCase();
-
-  const uid=user.id;
-  // Parallel fetch all tables
-  const [cd,cr,desp,rec,parc,inv,met,lim] = await Promise.all([
-    SB.from('categorias_despesa').select('*').eq('user_id',uid).order('created_at'),
-    SB.from('categorias_receita').select('*').eq('user_id',uid).order('created_at'),
-    SB.from('despesas').select('*').eq('user_id',uid).order('data',{ascending:false}),
-    SB.from('receitas').select('*').eq('user_id',uid).order('data',{ascending:false}),
-    SB.from('parcelamentos').select('*').eq('user_id',uid).order('created_at'),
-    SB.from('investimentos').select('*').eq('user_id',uid).order('created_at'),
-    SB.from('metas').select('*').eq('user_id',uid).order('created_at'),
-    SB.from('limites').select('*').eq('user_id',uid),
-  ]);
-
-  DB.catDesp = cd.data||[];
-  DB.catRec  = cr.data||[];
-  DB.despesas= desp.data||[];
-  DB.receitas= rec.data||[];
-  DB.parcelamentos=parc.data||[];
-  DB.investimentos=inv.data||[];
-  DB.metas=met.data||[];
-  // Recorrências carregadas separadamente para não bloquear o app
-  const recorr = await Promise.resolve(SB.from('recorrencias').select('*').eq('user_id',uid).order('created_at')).catch(() => ({data:[]}));
-  const cartRes = await Promise.resolve(SB.from('cartoes').select('*').eq('user_id',uid).order('created_at')).catch(()=>({data:[]}));
-  DB.cartoes=cartRes.data||[];
-  DB.recorrencias=recorr.data||[];
-  // Build limites map
-  DB.limites={};
-  (lim.data||[]).forEach(l=>DB.limites[l.categoria]=Number(l.valor));
-
-  // First time: seed default categories
-  if(!DB.catDesp.length) await seedCategories(uid);
-  if(!Object.keys(DB.limites).length) await seedLimites(uid);
-
-  loading(false);
-  document.getElementById('auth-screen').style.display='none';
-  document.getElementById('app-screen').style.display='block';
-  renderDashboard();
-  updateSaldo();
-  // Processa recorrências em segundo plano sem travar o login
-  processarRecorrencias().catch(e => console.warn('Recorrências:', e));
+    document.getElementById('sb-email').textContent=user.email;
+    document.getElementById('sb-avatar').textContent=user.email[0].toUpperCase();
+    const uid=user.id;
+    // Fetch em paralelo com timeout individual por query
+    const [cd,cr,desp,rec,parc,inv,met,lim,recorr,cart] = await Promise.all([
+      qry(SB.from('categorias_despesa').select('*').eq('user_id',uid).order('created_at')),
+      qry(SB.from('categorias_receita').select('*').eq('user_id',uid).order('created_at')),
+      qry(SB.from('despesas').select('*').eq('user_id',uid).order('data',{ascending:false})),
+      qry(SB.from('receitas').select('*').eq('user_id',uid).order('data',{ascending:false})),
+      qry(SB.from('parcelamentos').select('*').eq('user_id',uid).order('created_at')),
+      qry(SB.from('investimentos').select('*').eq('user_id',uid).order('created_at')),
+      qry(SB.from('metas').select('*').eq('user_id',uid).order('created_at')),
+      qry(SB.from('limites').select('*').eq('user_id',uid)),
+      qry(SB.from('recorrencias').select('*').eq('user_id',uid).order('created_at')),
+      qry(SB.from('cartoes').select('*').eq('user_id',uid).order('created_at')),
+    ]);
+    DB.catDesp=cd.data||[];
+    DB.catRec=cr.data||[];
+    DB.despesas=desp.data||[];
+    DB.receitas=rec.data||[];
+    DB.parcelamentos=parc.data||[];
+    DB.investimentos=inv.data||[];
+    DB.metas=met.data||[];
+    DB.recorrencias=recorr.data||[];
+    DB.cartoes=cart.data||[];
+    DB.limites={};
+    (lim.data||[]).forEach(l=>DB.limites[l.categoria]=Number(l.valor));
+    if(!DB.catDesp.length) await seedCategories(uid);
+    if(!Object.keys(DB.limites).length) await seedLimites(uid);
   } catch(e) {
+    console.error('Bootstrap error:',e);
+  } finally {
     loading(false);
-    document.getElementById('auth-screen').style.display='flex';
-    document.getElementById('app-screen').style.display='none';
-    console.error('Bootstrap error:', e);
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('app-screen').style.display='block';
+    renderDashboard();
+    updateSaldo();
+    processarRecorrencias().catch(e=>console.warn('Recorrências:',e));
   }
 }
 
