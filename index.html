@@ -256,6 +256,23 @@ textarea{resize:vertical;min-height:68px}
 
 @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.sidebar{display:none}.content{margin-left:0}.kpi-row{grid-template-columns:repeat(2,1fr)}.two-col{grid-template-columns:1fr}}
+
+/* ── CARTAO CARDS ── */
+.cartao-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:0;overflow:hidden;transition:box-shadow .2s}
+.cartao-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.25)}
+.cartao-card-top{height:90px;display:flex;align-items:flex-end;padding:14px;position:relative}
+.cartao-card-top::before{content:'';position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.08)}
+.cartao-card-top::after{content:'';position:absolute;top:10px;right:20px;width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.05)}
+.cartao-nome{color:#fff;font-size:15px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.3);z-index:1;word-break:break-word}
+.cartao-card-bot{padding:12px 14px;display:flex;justify-content:space-between;align-items:center;background:var(--s2)}
+.toggle-wrap{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)}
+.toggle{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:20px;cursor:pointer;transition:.2s}
+.toggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.toggle input:checked+.toggle-slider{background:var(--green)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(16px)}
+/* ── END CARTAO CARDS ── */
 </style>
 </head>
 <body>
@@ -506,9 +523,24 @@ textarea{resize:vertical;min-height:68px}
 <div class="page" id="p-cartoes">
   <div class="sec-head">
     <div><div class="sec-title">Cart&#245;es</div><div class="sec-sub" id="cart-sub"></div></div>
-    <button class="btn btn-primary btn-sm" onclick="openModal('cartao')">+ Novo Cart&#227;o</button>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>Nome</th><th>Status</th><th></th></tr></thead><tbody id="t-cartoes"></tbody></table></div>
+  <!-- Inline add form -->
+  <div class="card" style="margin-bottom:20px">
+    <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em">Adicionar Cart&#227;o</div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div class="fg" style="flex:1;min-width:160px;margin:0">
+        <label>Nome do Cart&#227;o</label>
+        <input type="text" id="novo-cartao-nome" placeholder="Ex: Nubank, Ita&#250; Visa&#8230;" onkeydown="if(event.key==='Enter')addCartaoInline()">
+      </div>
+      <div class="fg" style="margin:0">
+        <label>Cor</label>
+        <input type="color" id="novo-cartao-cor" value="#4f9cf9" style="height:42px;width:52px;padding:2px 4px;cursor:pointer;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--s2)">
+      </div>
+      <button class="btn btn-primary" onclick="addCartaoInline()" style="height:42px">+ Adicionar</button>
+    </div>
+  </div>
+  <!-- Cards grid -->
+  <div id="cartoes-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px"></div>
 </div>
 
 
@@ -790,16 +822,62 @@ function editLanc(table, id){
 // CARTOES
 // ══════════════════════════════════════════════════
 function renderCartoes(){
-  document.getElementById('cart-sub').textContent = DB.cartoes.length+' cart\u00f5es cadastrados';
-  document.getElementById('t-cartoes').innerHTML = DB.cartoes.length
-    ? DB.cartoes.map(c=>`<tr><td style="font-weight:500">${c.nome}</td><td><span class="badge ${c.ativo?'b-green':'b-gray'}">${c.ativo?'Ativo':'Inativo'}</span></td><td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="toggleCartao('${c.id}',${!c.ativo})">${c.ativo?'Desativar':'Ativar'}</button> <button class="btn btn-danger btn-sm" onclick="delRow('cartoes','${c.id}')">✕</button></td></tr>`).join('')
-    : `<tr><td colspan="3"><div class="empty"><div class="empty-icon">💳</div><div class="empty-msg">Nenhum cart\u00e3o cadastrado</div></div></td></tr>`;
+  const total=DB.cartoes.length, ativos=DB.cartoes.filter(x=>x.ativo).length;
+  document.getElementById('cart-sub').textContent=`${total} cart\u00f5es · ${ativos} ativo${ativos!==1?'s':''}`;
+  const grid=document.getElementById('cartoes-grid');
+  if(!DB.cartoes.length){
+    grid.innerHTML=`<div class="empty" style="grid-column:1/-1"><div class="empty-icon">\uD83D\uDCB3</div><div class="empty-msg">Nenhum cart\u00e3o cadastrado</div><div class="empty-sub">Adicione seu primeiro cart\u00e3o acima</div></div>`;
+    return;
+  }
+  grid.innerHTML=DB.cartoes.map(ct=>{
+    const cor=ct.cor||'#4f9cf9';
+    const checked=ct.ativo?'checked':'';
+    return `<div class="cartao-card" id="cc-${ct.id}">
+      <div class="cartao-card-top" style="background:linear-gradient(135deg,${cor}cc,${cor}88)">
+        <span class="cartao-nome">${ct.nome}</span>
+      </div>
+      <div class="cartao-card-bot">
+        <label class="toggle-wrap" title="${ct.ativo?'Ativo':'Inativo'}">
+          <span class="toggle"><input type="checkbox" ${checked} onchange="toggleCartao('${ct.id}',this.checked)"><span class="toggle-slider"></span></span>
+          <span>${ct.ativo?'Ativo':'Inativo'}</span>
+        </label>
+        <button class="btn btn-danger btn-sm" onclick="delCartao('${ct.id}','${ct.nome}')">Remover</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function addCartaoInline(){
+  const inp=document.getElementById('novo-cartao-nome');
+  const nome=inp.value.trim();
+  if(!nome){inp.focus();return;}
+  const cor=document.getElementById('novo-cartao-cor').value;
+  loading(true,'Salvando...');
+  const {data:row,error}=await SB.from('cartoes').insert({user_id:USER.id,nome,cor,ativo:true}).select().single();
+  loading(false);
+  if(error){toast('Erro: '+error.message,'var(--red)');return;}
+  DB.cartoes.push(row);
+  inp.value='';
+  document.getElementById('novo-cartao-cor').value='#4f9cf9';
+  renderCartoes();
+  toast('\u2705 Cart\u00e3o adicionado!','var(--green)');
+}
+
+async function delCartao(id,nome){
+  if(!confirm(`Remover o cart\u00e3o "${nome}"?`))return;
+  loading(true,'Removendo...');
+  const {error}=await SB.from('cartoes').delete().eq('id',id);
+  loading(false);
+  if(error){toast('Erro: '+error.message,'var(--red)');return;}
+  DB.cartoes=DB.cartoes.filter(x=>x.id!==id);
+  renderCartoes();
+  toast('Cart\u00e3o removido','var(--text2)');
 }
 
 async function toggleCartao(id, ativo){
   await SB.from('cartoes').update({ativo}).eq('id',id);
-  const c=DB.cartoes.find(x=>x.id===id);
-  if(c) c.ativo=ativo;
+  const ct=DB.cartoes.find(x=>x.id===id);
+  if(ct) ct.ativo=ativo;
   renderCartoes();
 }
 
